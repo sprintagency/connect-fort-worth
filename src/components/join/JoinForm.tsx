@@ -336,7 +336,7 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
             value={phone}
             maxLength={14}
             onChange={(e) => setPhone(formatUsPhone(e.target.value))}
-            placeholder="Cell number"
+            placeholder="(817) 555-0123"
           />
         </div>
         <div className="field">
