@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Camera, Check, ChevronDown, Upload, UserRound } from "lucide-react";
 import { createClient, SUPABASE_URL } from "@/utils/supabase/client";
 import { formatUsPhone, isValidUsPhone } from "@/lib/phone";
@@ -10,6 +11,12 @@ import { identifyAttendee, track } from "@/lib/track";
 import { useToast } from "@/components/Toast";
 import type { Attendee, EventRow } from "@/lib/types";
 import type { SiteContent } from "@/lib/content";
+
+// Lazy-load the cropper (and react-easy-crop) only when a photo is picked.
+const CropModal = dynamic(
+  () => import("@/components/CropModal").then((m) => ({ default: m.CropModal })),
+  { ssr: false },
+);
 
 interface JoinFormProps {
   event: EventRow | null;
@@ -30,6 +37,7 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
     existing?.photo_url ?? null,
   );
   const [uploading, setUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [first, setFirst] = useState(existing?.first_name ?? "");
   const [last, setLast] = useState(existing?.last_name ?? "");
   const [company, setCompany] = useState(existing?.company ?? "");
@@ -70,7 +78,7 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
     );
   }
 
-  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-selecting the same file
     if (!file) return;
@@ -78,6 +86,16 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
       toast("Connect Supabase to upload photos");
       return;
     }
+    // Open the crop/zoom step before uploading.
+    const reader = new FileReader();
+    reader.onload = () =>
+      setCropSrc(typeof reader.result === "string" ? reader.result : null);
+    reader.readAsDataURL(file);
+  }
+
+  async function uploadCropped(blob: Blob) {
+    setCropSrc(null);
+    if (!configured) return;
 
     setUploading(true);
     const uid = await ensureUid();
@@ -86,11 +104,10 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
       return;
     }
 
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const path = `${uid}/${Date.now()}.${ext}`;
+    const path = `${uid}/${Date.now()}.jpg`;
     const { error } = await supabase.storage
       .from("selfies")
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, blob, { upsert: true, contentType: "image/jpeg" });
 
     if (error) {
       toast("Photo upload failed. Try a different image.");
@@ -411,6 +428,14 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
               : "Join the directory →"}
         </button>
       </div>
+
+      {cropSrc ? (
+        <CropModal
+          image={cropSrc}
+          onCancel={() => setCropSrc(null)}
+          onConfirm={uploadCropped}
+        />
+      ) : null}
     </>
   );
 }

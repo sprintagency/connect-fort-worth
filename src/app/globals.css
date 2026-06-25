@@ -815,8 +815,64 @@ body {
   pointer-events: none;
 }
 .overlay-root .sheetmask,
-.overlay-root .sheet {
+.overlay-root .sheet,
+.overlay-root .crop-mask {
   pointer-events: auto;
+}
+
+/* photo crop modal */
+.crop-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  background: rgba(8, 29, 51, 0.72);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+.crop-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--navy);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.6);
+}
+.crop-area {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  background: #06182b;
+}
+.crop-controls {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.crop-zoom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #bcd0e6;
+  font-size: 12px;
+  font-weight: 600;
+}
+.crop-zoom input[type="range"] {
+  flex: 1;
+  accent-color: var(--orange);
+}
+.crop-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: #8aa3bd;
+  text-align: center;
+}
+.crop-btns {
+  display: flex;
+  gap: 10px;
 }
 
 /* ---------- dashboard ---------- */
