@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
-import { getLiveEvent, getRole, isAdminRole } from "@/lib/server-data";
-import { getSiteContent } from "@/lib/content";
+import { getRole, isAdminRole } from "@/lib/server-data";
+import { getCachedContent, getCachedEvent } from "@/lib/cached";
 import { AdminAccessCard } from "@/components/info/AdminAccessCard";
 
 const MONTHS = [
@@ -18,9 +18,9 @@ function formatEventDate(d: string | null): string {
 
 export default async function InfoPage() {
   const supabase = await createClient();
-  const event = await getLiveEvent(supabase);
+  const event = await getCachedEvent();
   const role = await getRole(supabase);
-  const content = await getSiteContent(supabase);
+  const content = await getCachedContent();
 
   let countQuery = supabase
     .from("attendees")

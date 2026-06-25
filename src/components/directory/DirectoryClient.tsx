@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, Search } from "lucide-react";
 import { INDUSTRIES } from "@/lib/constants";
+import { createClient } from "@/utils/supabase/client";
 import { track, type TrackContext } from "@/lib/track";
 import { buildSmsHref } from "@/lib/sms";
 import { downloadVCard } from "@/lib/vcard";
@@ -10,22 +12,29 @@ import { useToast } from "@/components/Toast";
 import type { Attendee, EventRow } from "@/lib/types";
 import { AttendeeCard } from "./AttendeeCard";
 import { ProfileSheet } from "./ProfileSheet";
+import { SwipeRow } from "./SwipeRow";
+import { MemberEditor } from "@/components/admin/MemberEditor";
 
 interface DirectoryClientProps {
   initial: Attendee[];
   event: EventRow | null;
   myAttendeeId: string | null;
+  isAdmin: boolean;
 }
 
 export function DirectoryClient({
   initial,
   event,
   myAttendeeId,
+  isAdmin,
 }: DirectoryClientProps) {
+  const router = useRouter();
+  const supabase = createClient();
   const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [indFilter, setIndFilter] = useState("");
   const [selected, setSelected] = useState<Attendee | null>(null);
+  const [editing, setEditing] = useState<Attendee | null>(null);
 
   const ctx: TrackContext = useMemo(
     () => ({ eventId: event?.id ?? null, actorAttendeeId: myAttendeeId }),
@@ -78,6 +87,24 @@ export function DirectoryClient({
     downloadVCard(a);
   }
 
+  async function deleteMember(a: Attendee) {
+    if (
+      !window.confirm(
+        `Remove ${a.first_name} ${a.last_name} from the directory? This can't be undone.`,
+      )
+    ) {
+      return;
+    }
+    const { error } = await supabase.from("attendees").delete().eq("id", a.id);
+    if (error) {
+      toast(error.message || "Couldn't remove this member");
+      return;
+    }
+    if (selected?.id === a.id) setSelected(null);
+    toast(`Removed ${a.first_name} ${a.last_name}`);
+    router.refresh();
+  }
+
   return (
     <>
       <div className="search">
@@ -120,15 +147,30 @@ export function DirectoryClient({
               : "No one here matches that yet. Try another industry or clear your search."}
           </div>
         ) : (
-          filtered.map((a) => (
-            <AttendeeCard
-              key={a.id}
-              attendee={a}
-              onOpen={() => openSheet(a)}
-              onSms={() => doSms(a)}
-              onVcard={() => doVcard(a)}
-            />
-          ))
+          filtered.map((a) =>
+            isAdmin ? (
+              <SwipeRow
+                key={a.id}
+                onEdit={() => setEditing(a)}
+                onDelete={() => deleteMember(a)}
+              >
+                <AttendeeCard
+                  attendee={a}
+                  onOpen={() => openSheet(a)}
+                  onSms={() => doSms(a)}
+                  onVcard={() => doVcard(a)}
+                />
+              </SwipeRow>
+            ) : (
+              <AttendeeCard
+                key={a.id}
+                attendee={a}
+                onOpen={() => openSheet(a)}
+                onSms={() => doSms(a)}
+                onVcard={() => doVcard(a)}
+              />
+            ),
+          )
         )}
       </div>
 
@@ -138,6 +180,17 @@ export function DirectoryClient({
         onSms={doSms}
         onVcard={doVcard}
       />
+
+      {editing ? (
+        <MemberEditor
+          member={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            router.refresh();
+          }}
+        />
+      ) : null}
     </>
   );
 }

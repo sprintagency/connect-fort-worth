@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { getLiveEvent, getRole, isAdminRole } from "@/lib/server-data";
+import { getRole, isAdminRole } from "@/lib/server-data";
+import { getCachedEvent } from "@/lib/cached";
 import { computeDashboard } from "@/lib/stats";
 import { StatsDashboard } from "@/components/stats/StatsDashboard";
 
@@ -13,7 +14,7 @@ export default async function StatsPage() {
   const role = await getRole(supabase);
   if (!isAdminRole(role)) redirect("/directory");
 
-  const event = await getLiveEvent(supabase);
+  const event = await getCachedEvent();
   const data = await computeDashboard(supabase, event?.id ?? null);
 
   return <StatsDashboard initial={data} />;

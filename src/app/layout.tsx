@@ -4,11 +4,11 @@ import "./globals.css";
 import { createClient } from "@/utils/supabase/server";
 import {
   getCurrentUser,
-  getLiveEvent,
   getMyAttendee,
   getRole,
   isAdminRole,
 } from "@/lib/server-data";
+import { getCachedEvent } from "@/lib/cached";
 import { Providers } from "@/components/Providers";
 import { AppShell } from "@/components/AppShell";
 
@@ -45,7 +45,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const supabase = await createClient();
   const [event, role, user] = await Promise.all([
-    getLiveEvent(supabase),
+    getCachedEvent(),
     getRole(supabase),
     getCurrentUser(supabase),
   ]);

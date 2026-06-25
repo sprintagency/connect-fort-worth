@@ -1,12 +1,19 @@
 import { createClient } from "@/utils/supabase/server";
-import { getCurrentUser, getLiveEvent, getMyAttendee } from "@/lib/server-data";
+import {
+  getCurrentUser,
+  getMyAttendee,
+  getRole,
+  isAdminRole,
+} from "@/lib/server-data";
+import { getCachedEvent } from "@/lib/cached";
 import { DirectoryClient } from "@/components/directory/DirectoryClient";
 import type { Attendee } from "@/lib/types";
 
 export default async function DirectoryPage() {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
-  const event = await getLiveEvent(supabase);
+  const event = await getCachedEvent();
+  const role = await getRole(supabase);
   const mine = await getMyAttendee(supabase, event?.id ?? null, user?.id ?? null);
 
   // RLS returns open_to_contact rows (+ the viewer's own row, + all for admins).
@@ -21,6 +28,7 @@ export default async function DirectoryPage() {
       initial={attendees}
       event={event}
       myAttendeeId={mine?.id ?? null}
+      isAdmin={isAdminRole(role)}
     />
   );
 }
