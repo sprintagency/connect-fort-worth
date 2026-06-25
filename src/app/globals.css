@@ -42,6 +42,8 @@ html,
 body {
   margin: 0;
   padding: 0;
+  /* prevent pull-to-refresh / overscroll "reload" on mobile */
+  overscroll-behavior: none;
 }
 
 body {
@@ -138,6 +140,8 @@ body {
   flex: 1;
   position: relative;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
 }
@@ -655,10 +659,6 @@ body {
   background: rgba(8, 29, 51, 0.55);
   backdrop-filter: blur(2px);
   z-index: 30;
-  animation: cfwMaskIn 0.3s ease both;
-}
-.sheetmask.closing {
-  animation: cfwMaskOut 0.3s ease both;
 }
 .sheet {
   position: absolute;
@@ -668,47 +668,20 @@ body {
   background: var(--navy);
   color: #fff;
   border-radius: 24px 24px 0 0;
-  transform: translateY(0);
   z-index: 31;
   padding: 14px 20px 22px;
   max-height: 90%;
   overflow-y: auto;
-  animation: cfwSheetIn 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  overscroll-behavior: contain;
+  will-change: transform;
 }
-.sheet.closing {
-  animation: cfwSheetOut 0.3s cubic-bezier(0.4, 0, 0.6, 1) both;
+/* drag-to-dismiss handle (grab bar + header); content below scrolls */
+.sheet-handle {
+  touch-action: none;
+  cursor: grab;
 }
-@keyframes cfwSheetIn {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-@keyframes cfwSheetOut {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(100%);
-  }
-}
-@keyframes cfwMaskIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes cfwMaskOut {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
+.sheet-handle:active {
+  cursor: grabbing;
 }
 .sheet .grab {
   width: 40px;
@@ -880,6 +853,81 @@ body {
 .crop-btns {
   display: flex;
   gap: 10px;
+}
+
+/* ---------- touch responsiveness ---------- */
+.btn,
+.tab,
+.acard,
+.iconbtn,
+.chip,
+.switch,
+.cbx,
+.sponsor,
+.sheet-handle {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Neutralize hover styles on touch devices so they don't "stick" after a tap */
+@media (hover: none) {
+  .acard:hover {
+    border-color: var(--line-2);
+    box-shadow: none;
+    transform: none;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--orange);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.5);
+    background: transparent;
+  }
+  .iconbtn.sms:hover {
+    background: var(--orange-100);
+    color: var(--orange-600);
+  }
+  .iconbtn.vc:hover {
+    background: #e9eef5;
+    color: var(--navy);
+  }
+  .sponsor:hover {
+    border-color: rgba(255, 255, 255, 0.45);
+    background: transparent;
+  }
+}
+
+/* ---------- navigation skeleton ---------- */
+.screen-loading {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sk {
+  border-radius: 12px;
+  background: linear-gradient(
+    100deg,
+    var(--line-2) 28%,
+    #f7fafd 48%,
+    var(--line-2) 68%
+  );
+  background-size: 220% 100%;
+  animation: skshimmer 1.25s linear infinite;
+}
+.sk-line {
+  height: 16px;
+}
+.sk-card {
+  height: 74px;
+}
+@keyframes skshimmer {
+  from {
+    background-position: 220% 0;
+  }
+  to {
+    background-position: -220% 0;
+  }
 }
 
 /* ---------- dashboard ---------- */

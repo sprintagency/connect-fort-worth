@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Briefcase,
@@ -22,6 +22,8 @@ interface ProfileSheetProps {
   onVcard: (a: Attendee) => void;
 }
 
+const DISMISS_THRESHOLD = 120;
+
 export function ProfileSheet({
   attendee,
   onClose,
@@ -29,67 +31,131 @@ export function ProfileSheet({
   onVcard,
 }: ProfileSheetProps) {
   const [target, setTarget] = useState<HTMLElement | null>(null);
+  const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const draggingRef = useRef(false);
+  const startY = useRef(0);
+  const dragYRef = useRef(0);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- locate the portal node once after mount
     setTarget(document.getElementById("cfw-overlay"));
   }, []);
 
-  if (!target || !attendee) return null;
+  useEffect(() => {
+    // Slide up on mount (rAF defers the state update out of the effect body).
+    const id = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
+  if (!target || !attendee) return null;
   const a = attendee;
   const fullName = `${a.first_name} ${a.last_name}`;
 
-  // Play the slide-out animation, then ask the parent to unmount us.
-  const requestClose = () => setClosing(true);
-  const handleAnimationEnd = () => {
-    if (closing) {
-      setClosing(false);
-      onClose();
+  function beginClose() {
+    draggingRef.current = false;
+    setDragging(false);
+    setClosing(true);
+  }
+  function handleTransitionEnd() {
+    if (closing) onClose();
+  }
+
+  function onPointerDown(e: React.PointerEvent) {
+    if (closing) return;
+    startY.current = e.clientY;
+    draggingRef.current = true;
+    setDragging(true);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // ignore (e.g. synthetic events with no active pointer)
     }
+  }
+  function onPointerMove(e: React.PointerEvent) {
+    if (!draggingRef.current) return;
+    const dy = Math.max(0, e.clientY - startY.current);
+    dragYRef.current = dy;
+    setDragY(dy);
+  }
+  function onPointerUp() {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    setDragging(false);
+    if (dragYRef.current > DISMISS_THRESHOLD) {
+      beginClose();
+    } else {
+      dragYRef.current = 0;
+      setDragY(0);
+    }
+  }
+
+  const translateY = closing
+    ? "100%"
+    : dragging || dragY > 0
+      ? `${dragY}px`
+      : open
+        ? "0px"
+        : "100%";
+  const sheetStyle: React.CSSProperties = {
+    transform: `translateY(${translateY})`,
+    transition: dragging
+      ? "none"
+      : "transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1)",
+  };
+  const maskStyle: React.CSSProperties = {
+    opacity: closing ? 0 : open ? Math.max(0, 1 - dragY / 480) : 0,
+    transition: dragging ? "none" : "opacity 0.34s ease",
   };
 
   return createPortal(
     <>
+      <div className="sheetmask" style={maskStyle} onClick={beginClose} />
       <div
-        className={`sheetmask ${closing ? "closing" : ""}`}
-        onClick={requestClose}
-      />
-      <div
-        className={`sheet ${closing ? "closing" : ""}`}
+        className="sheet"
+        style={sheetStyle}
         role="dialog"
         aria-modal="true"
-        onAnimationEnd={handleAnimationEnd}
+        onTransitionEnd={handleTransitionEnd}
       >
-        <div className="grab" />
-        <div className="ph-top">
-          <div
-            className="bigav"
-            style={
-              a.photo_url ? undefined : { background: avatarGradient(a.id) }
-            }
-          >
-            {a.photo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={a.photo_url} alt="" />
-            ) : (
-              initials(a.first_name, a.last_name)
-            )}
-          </div>
-          <h2>{fullName}</h2>
-          <div className="role">
-            {a.job_title || a.company || a.industry}
-          </div>
-          {a.looking_for.length > 0 ? (
-            <div className="lf">
-              {a.looking_for.map((x) => (
-                <span className="c" key={x}>
-                  {x}
-                </span>
-              ))}
+        <div
+          className="sheet-handle"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+        >
+          <div className="grab" />
+          <div className="ph-top">
+            <div
+              className="bigav"
+              style={
+                a.photo_url ? undefined : { background: avatarGradient(a.id) }
+              }
+            >
+              {a.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={a.photo_url} alt="" />
+              ) : (
+                initials(a.first_name, a.last_name)
+              )}
             </div>
-          ) : null}
+            <h2>{fullName}</h2>
+            <div className="role">
+              {a.job_title || a.company || a.industry}
+            </div>
+            {a.looking_for.length > 0 ? (
+              <div className="lf">
+                {a.looking_for.map((x) => (
+                  <span className="c" key={x}>
+                    {x}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className="cta2">
