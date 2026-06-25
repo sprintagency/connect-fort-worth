@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Info, UserPlus, Users, type LucideIcon } from "lucide-react";
+import {
+  BarChart3,
+  Info,
+  UserPlus,
+  UserRound,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import type { EventRow } from "@/lib/types";
 import { Header } from "./Header";
 import { BuiltBy } from "./BuiltBy";
@@ -11,18 +18,20 @@ import { Toaster } from "./Toast";
 interface AppShellProps {
   event: EventRow | null;
   isAdmin: boolean;
+  hasJoined: boolean;
   sponsorUrl: string | null;
   sponsorName: string | null;
   children: React.ReactNode;
 }
 
-const TABS: {
+type TabItem = {
   href: string;
   label: string;
   Icon: LucideIcon;
   adminOnly?: boolean;
-}[] = [
-  { href: "/", label: "Join", Icon: UserPlus },
+};
+
+const SECONDARY_TABS: TabItem[] = [
   { href: "/directory", label: "Directory", Icon: Users },
   { href: "/stats", label: "Stats", adminOnly: true, Icon: BarChart3 },
   { href: "/info", label: "Info", Icon: Info },
@@ -31,6 +40,7 @@ const TABS: {
 export function AppShell({
   event,
   isAdmin,
+  hasJoined,
   sponsorUrl,
   sponsorName,
   children,
@@ -39,6 +49,12 @@ export function AppShell({
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+  // The home tab doubles as the profile editor once a visitor has joined.
+  const homeTab: TabItem = hasJoined
+    ? { href: "/", label: "Profile", Icon: UserRound }
+    : { href: "/", label: "Join", Icon: UserPlus };
+  const tabs: TabItem[] = [homeTab, ...SECONDARY_TABS];
 
   return (
     <div className="appbg">
@@ -51,7 +67,7 @@ export function AppShell({
         <main className="appscroll">{children}</main>
         <BuiltBy />
         <nav className="tabbar">
-          {TABS.filter((t) => !t.adminOnly || isAdmin).map((t) => (
+          {tabs.filter((t) => !t.adminOnly || isAdmin).map((t) => (
             <Link
               key={t.href}
               href={t.href}

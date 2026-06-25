@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  Briefcase,
   Building2,
   CircleCheck,
   CircleSlash,
@@ -78,7 +79,7 @@ export function ProfileSheet({
           </div>
           <h2>{fullName}</h2>
           <div className="role">
-            {[a.company, a.industry].filter(Boolean).join(" · ")}
+            {a.job_title || a.company || a.industry}
           </div>
           {a.looking_for.length > 0 ? (
             <div className="lf">
@@ -125,6 +126,12 @@ export function ProfileSheet({
             <div className="detrow">
               <Building2 size={18} strokeWidth={2} aria-hidden />
               <span className="v">{a.company}</span>
+            </div>
+          ) : null}
+          {a.industry ? (
+            <div className="detrow">
+              <Briefcase size={18} strokeWidth={2} aria-hidden />
+              <span className="v">{a.industry}</span>
             </div>
           ) : null}
           <div className="detrow">

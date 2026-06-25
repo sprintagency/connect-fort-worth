@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Check, ChevronDown, Upload, UserRound } from "lucide-react";
 import { createClient, SUPABASE_URL } from "@/utils/supabase/client";
+import { formatUsPhone, isValidUsPhone } from "@/lib/phone";
 import { INDUSTRIES, LOOKING_FOR } from "@/lib/constants";
 import { identifyAttendee, track } from "@/lib/track";
 import { useToast } from "@/components/Toast";
@@ -30,8 +31,11 @@ export function JoinForm({ event, existing }: JoinFormProps) {
   const [first, setFirst] = useState(existing?.first_name ?? "");
   const [last, setLast] = useState(existing?.last_name ?? "");
   const [company, setCompany] = useState(existing?.company ?? "");
+  const [jobTitle, setJobTitle] = useState(existing?.job_title ?? "");
   const [industry, setIndustry] = useState(existing?.industry ?? INDUSTRIES[0]);
-  const [phone, setPhone] = useState(existing?.phone ?? "");
+  const [phone, setPhone] = useState(
+    existing?.phone ? formatUsPhone(existing.phone) : "",
+  );
   const [email, setEmail] = useState(existing?.email ?? "");
   const [openToContact, setOpenToContact] = useState(
     existing?.open_to_contact ?? true,
@@ -109,8 +113,32 @@ export function JoinForm({ event, existing }: JoinFormProps) {
       toast("Connect Supabase to save your profile");
       return;
     }
-    if (!first.trim() || !last.trim()) {
-      toast("Add your first and last name");
+    if (!first.trim()) {
+      toast("Add your first name");
+      return;
+    }
+    if (!last.trim()) {
+      toast("Add your last name");
+      return;
+    }
+    if (!company.trim()) {
+      toast("Add your company");
+      return;
+    }
+    if (!jobTitle.trim()) {
+      toast("Add your job title");
+      return;
+    }
+    if (!industry) {
+      toast("Pick your industry");
+      return;
+    }
+    if (!isValidUsPhone(phone)) {
+      toast("Enter a valid 10-digit US cell number");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      toast("Enter a valid email address");
       return;
     }
     if (!agreed) {
@@ -133,10 +161,11 @@ export function JoinForm({ event, existing }: JoinFormProps) {
           event_id: event?.id ?? null,
           first_name: first.trim(),
           last_name: last.trim(),
-          company: company.trim() || null,
+          company: company.trim(),
+          job_title: jobTitle.trim(),
           industry,
-          phone: phone.trim() || null,
-          email: email.trim() || null,
+          phone: phone.trim(),
+          email: email.trim(),
           photo_url: photoUrl,
           open_to_contact: openToContact,
           looking_for: lookingFor,
@@ -270,6 +299,17 @@ export function JoinForm({ event, existing }: JoinFormProps) {
           />
         </div>
         <div className="field">
+          <label>Job title</label>
+          <input
+            id="jobTitle"
+            name="organization-title"
+            autoComplete="organization-title"
+            value={jobTitle}
+            onChange={(e) => setJobTitle(e.target.value)}
+            placeholder="Job title"
+          />
+        </div>
+        <div className="field">
           <label>Industry</label>
           <select
             id="industry"
@@ -296,7 +336,8 @@ export function JoinForm({ event, existing }: JoinFormProps) {
             inputMode="tel"
             autoComplete="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            maxLength={14}
+            onChange={(e) => setPhone(formatUsPhone(e.target.value))}
             placeholder="Cell number"
           />
         </div>

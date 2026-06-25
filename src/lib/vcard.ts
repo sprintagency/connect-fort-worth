@@ -2,7 +2,13 @@ import type { Attendee } from "./types";
 
 type VCardInput = Pick<
   Attendee,
-  "first_name" | "last_name" | "company" | "industry" | "phone" | "email"
+  | "first_name"
+  | "last_name"
+  | "company"
+  | "job_title"
+  | "industry"
+  | "phone"
+  | "email"
 >;
 
 /** Escape per vCard 3.0 (commas, semicolons, backslashes, newlines). */
@@ -23,7 +29,9 @@ export function buildVCard(a: VCardInput): string {
     `FN:${esc(`${a.first_name} ${a.last_name}`.trim())}`,
   ];
   if (a.company) lines.push(`ORG:${esc(a.company)}`);
-  if (a.industry) lines.push(`TITLE:${esc(a.industry)}`);
+  const title = a.job_title || a.industry;
+  if (title) lines.push(`TITLE:${esc(title)}`);
+  if (a.industry) lines.push(`ROLE:${esc(a.industry)}`);
   if (a.phone) lines.push(`TEL;TYPE=CELL:${esc(a.phone)}`);
   if (a.email) lines.push(`EMAIL:${esc(a.email)}`);
   lines.push("NOTE:Met at Access Fort Worth · Connect Fort Worth");

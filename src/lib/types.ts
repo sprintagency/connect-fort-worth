@@ -26,6 +26,7 @@ export interface Attendee {
   first_name: string;
   last_name: string;
   company: string | null;
+  job_title: string | null;
   industry: string | null;
   phone: string | null;
   email: string | null;

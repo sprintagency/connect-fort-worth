@@ -18,8 +18,15 @@ export function AttendeeCard({
   onSms,
   onVcard,
 }: AttendeeCardProps) {
-  const { first_name, last_name, company, industry, photo_url, open_to_contact } =
-    attendee;
+  const {
+    first_name,
+    last_name,
+    company,
+    job_title,
+    industry,
+    photo_url,
+    open_to_contact,
+  } = attendee;
 
   return (
     <div
@@ -52,7 +59,11 @@ export function AttendeeCard({
             <span className="ndot" title="Open to contact" />
           ) : null}
         </div>
-        {company ? <div className="ti">{company}</div> : null}
+        {job_title || company ? (
+          <div className="ti">
+            {[job_title, company].filter(Boolean).join(" · ")}
+          </div>
+        ) : null}
         {industry ? <span className="ind">{industry}</span> : null}
       </div>
       <div className="acts">

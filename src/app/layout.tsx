@@ -2,7 +2,13 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { createClient } from "@/utils/supabase/server";
-import { getLiveEvent, getRole, isAdminRole } from "@/lib/server-data";
+import {
+  getCurrentUser,
+  getLiveEvent,
+  getMyAttendee,
+  getRole,
+  isAdminRole,
+} from "@/lib/server-data";
 import { Providers } from "@/components/Providers";
 import { AppShell } from "@/components/AppShell";
 
@@ -38,10 +44,14 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const supabase = await createClient();
-  const [event, role] = await Promise.all([
+  const [event, role, user] = await Promise.all([
     getLiveEvent(supabase),
     getRole(supabase),
+    getCurrentUser(supabase),
   ]);
+  const mine = user
+    ? await getMyAttendee(supabase, event?.id ?? null, user.id)
+    : null;
 
   const sponsorUrl = process.env.NEXT_PUBLIC_SPONSOR_LOGO_URL || null;
   const sponsorName = process.env.NEXT_PUBLIC_SPONSOR_NAME || null;
@@ -53,6 +63,7 @@ export default async function RootLayout({
           <AppShell
             event={event}
             isAdmin={isAdminRole(role)}
+            hasJoined={Boolean(mine)}
             sponsorUrl={sponsorUrl}
             sponsorName={sponsorName}
           >
