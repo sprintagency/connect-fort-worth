@@ -9,13 +9,15 @@ import { INDUSTRIES, LOOKING_FOR } from "@/lib/constants";
 import { identifyAttendee, track } from "@/lib/track";
 import { useToast } from "@/components/Toast";
 import type { Attendee, EventRow } from "@/lib/types";
+import type { SiteContent } from "@/lib/content";
 
 interface JoinFormProps {
   event: EventRow | null;
   existing: Attendee | null;
+  copy: SiteContent;
 }
 
-export function JoinForm({ event, existing }: JoinFormProps) {
+export function JoinForm({ event, existing, copy }: JoinFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const supabase = createClient();
@@ -201,13 +203,11 @@ export function JoinForm({ event, existing }: JoinFormProps) {
     <>
       <div className="hero">
         <h1>
-          Live Connect
+          {copy.hero1}
           <br />
-          <span className="fw">Fort Worth</span>
+          <span className="fw">{copy.hero2}</span>
         </h1>
-        <p className="sub">
-          Build connections. Grow your business. Meet the room.
-        </p>
+        <p className="sub">{copy.subtitle}</p>
         <div className="selfie-wrap">
           <div className="selfie">
             {photoUrl ? (
@@ -252,9 +252,7 @@ export function JoinForm({ event, existing }: JoinFormProps) {
               Upload
             </button>
           </div>
-          <div className="selfie-hint">
-            A friendly face helps people put a name to you.
-          </div>
+          <div className="selfie-hint">{copy.selfieHint}</div>
         </div>
       </div>
 

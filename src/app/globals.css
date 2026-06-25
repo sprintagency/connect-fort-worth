@@ -297,7 +297,8 @@ body {
   letter-spacing: 0.02em;
 }
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   border: 1.4px solid var(--line);
   border-radius: 12px;
@@ -309,6 +310,15 @@ body {
   outline: none;
   transition: 0.15s;
   appearance: none;
+}
+.field textarea {
+  resize: vertical;
+  min-height: 64px;
+  line-height: 1.45;
+}
+.field textarea:focus {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px var(--orange-100);
 }
 .field select {
   cursor: pointer;

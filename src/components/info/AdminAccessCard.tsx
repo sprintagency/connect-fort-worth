@@ -40,6 +40,24 @@ export function AdminAccessCard({ isAdmin }: { isAdmin: boolean }) {
               Manage sponsor logo
             </Link>
           </div>
+          <div className="adminbox">
+            <Link
+              href="/admin/content"
+              className="btn btn-ghost btn-block"
+              style={{ color: "var(--navy)", borderColor: "var(--line)" }}
+            >
+              Edit text &amp; content
+            </Link>
+          </div>
+          <div className="adminbox">
+            <Link
+              href="/admin/data"
+              className="btn btn-ghost btn-block"
+              style={{ color: "var(--navy)", borderColor: "var(--line)" }}
+            >
+              Export / reset data
+            </Link>
+          </div>
           <button
             type="button"
             className="btn btn-ghost btn-block"

@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { getLiveEvent, getRole, isAdminRole } from "@/lib/server-data";
+import { getSiteContent } from "@/lib/content";
 import { AdminAccessCard } from "@/components/info/AdminAccessCard";
 
 const MONTHS = [
@@ -19,6 +20,7 @@ export default async function InfoPage() {
   const supabase = await createClient();
   const event = await getLiveEvent(supabase);
   const role = await getRole(supabase);
+  const content = await getSiteContent(supabase);
 
   let countQuery = supabase
     .from("attendees")
@@ -29,11 +31,8 @@ export default async function InfoPage() {
   return (
     <div className="info">
       <div className="infocard">
-        <h3>{event?.name ?? "Connect Fort Worth"}</h3>
-        <p>
-          One room. A few hundred people who could change your year. This app is
-          your shortcut to finding them.
-        </p>
+        <h3>{event?.name ?? "Live Connect Fort Worth"}</h3>
+        <p>{content.infoIntro}</p>
         <div className="statline">
           <span>Date</span>
           <span className="v">{formatEventDate(event?.event_date ?? null)}</span>
@@ -52,25 +51,21 @@ export default async function InfoPage() {
         <h3>How it works</h3>
         <p>
           <b style={{ marginRight: "0.4em" }}>1.</b>
-          Add your selfie and what you&apos;re looking for.
+          {content.step1}
         </p>
         <p>
           <b style={{ marginRight: "0.4em" }}>2.</b>
-          Search the room by industry or name.
+          {content.step2}
         </p>
         <p>
           <b style={{ marginRight: "0.4em" }}>3.</b>
-          Tap to text or save a contact, then go say hello.
+          {content.step3}
         </p>
       </div>
 
       <div className="infocard">
         <h3>Your data</h3>
-        <p>
-          Stored securely and only shared with attendees you choose to be
-          visible to. Turn off &quot;Open to being contacted&quot; anytime to
-          leave the directory.
-        </p>
+        <p>{content.privacy}</p>
       </div>
 
       <AdminAccessCard isAdmin={isAdminRole(role)} />
