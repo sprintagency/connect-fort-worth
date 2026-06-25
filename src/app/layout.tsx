@@ -21,7 +21,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Connect Fort Worth",
+  title: "Live Connect Fort Worth",
   description:
     "Build connections. Grow your business. Meet the room. The Access Fort Worth event networking directory.",
 };

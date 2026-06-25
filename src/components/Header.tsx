@@ -14,6 +14,7 @@ interface HeaderProps {
 export function Header({ event, sponsorUrl, sponsorName }: HeaderProps) {
   const logo = sponsorUrl || event?.sponsor_logo_url || null;
   const name = sponsorName || event?.sponsor_name || null;
+  const link = event?.sponsor_url || null;
 
   return (
     <header className="brandbar">
@@ -24,11 +25,25 @@ export function Header({ event, sponsorUrl, sponsorName }: HeaderProps) {
         alt="Access Fort Worth"
       />
       {logo ? (
-        <div className="sponsor filled" title={name ?? "Presented by"}>
-          <span className="lbl">PRESENTED BY</span>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logo} alt={name ?? "Event sponsor"} />
-        </div>
+        link ? (
+          <a
+            className="sponsor filled"
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={name ?? "Presented by"}
+          >
+            <span className="lbl">PRESENTED BY</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logo} alt={name ?? "Event sponsor"} />
+          </a>
+        ) : (
+          <div className="sponsor filled" title={name ?? "Presented by"}>
+            <span className="lbl">PRESENTED BY</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logo} alt={name ?? "Event sponsor"} />
+          </div>
+        )
       ) : (
         <div className="sponsor" title="Sponsor slot">
           <span className="lbl">PRESENTED BY</span>

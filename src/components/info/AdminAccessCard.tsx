@@ -31,6 +31,15 @@ export function AdminAccessCard({ isAdmin }: { isAdmin: boolean }) {
               Open the dashboard
             </Link>
           </div>
+          <div className="adminbox">
+            <Link
+              href="/admin/sponsor"
+              className="btn btn-ghost btn-block"
+              style={{ color: "var(--navy)", borderColor: "var(--line)" }}
+            >
+              Manage sponsor logo
+            </Link>
+          </div>
           <button
             type="button"
             className="btn btn-ghost btn-block"

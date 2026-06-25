@@ -51,13 +51,16 @@ export default async function InfoPage() {
       <div className="infocard">
         <h3>How it works</h3>
         <p>
-          <b>1.</b> Add your selfie and what you&apos;re looking for.
+          <b style={{ marginRight: "0.4em" }}>1.</b>
+          Add your selfie and what you&apos;re looking for.
         </p>
         <p>
-          <b>2.</b> Search the room by industry or name.
+          <b style={{ marginRight: "0.4em" }}>2.</b>
+          Search the room by industry or name.
         </p>
         <p>
-          <b>3.</b> Tap to text or save a contact, then go say hello.
+          <b style={{ marginRight: "0.4em" }}>3.</b>
+          Tap to text or save a contact, then go say hello.
         </p>
       </div>
 

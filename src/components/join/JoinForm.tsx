@@ -172,7 +172,7 @@ export function JoinForm({ event, existing }: JoinFormProps) {
     <>
       <div className="hero">
         <h1>
-          Connect
+          Live Connect
           <br />
           <span className="fw">Fort Worth</span>
         </h1>

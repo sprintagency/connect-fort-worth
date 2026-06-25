@@ -15,6 +15,7 @@ export interface EventRow {
   venue: string | null;
   sponsor_name: string | null;
   sponsor_logo_url: string | null;
+  sponsor_url: string | null;
   is_live: boolean;
 }
 
