@@ -1,0 +1,379 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient, SUPABASE_URL } from "@/utils/supabase/client";
+import { INDUSTRIES, LOOKING_FOR } from "@/lib/constants";
+import { identifyAttendee, track } from "@/lib/track";
+import { useToast } from "@/components/Toast";
+import type { Attendee, EventRow } from "@/lib/types";
+
+interface JoinFormProps {
+  event: EventRow | null;
+  existing: Attendee | null;
+}
+
+export function JoinForm({ event, existing }: JoinFormProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const supabase = createClient();
+  const configured = Boolean(SUPABASE_URL);
+
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const uploadInput = useRef<HTMLInputElement>(null);
+
+  const [photoUrl, setPhotoUrl] = useState<string | null>(
+    existing?.photo_url ?? null,
+  );
+  const [uploading, setUploading] = useState(false);
+  const [first, setFirst] = useState(existing?.first_name ?? "");
+  const [last, setLast] = useState(existing?.last_name ?? "");
+  const [company, setCompany] = useState(existing?.company ?? "");
+  const [industry, setIndustry] = useState(existing?.industry ?? INDUSTRIES[0]);
+  const [phone, setPhone] = useState(existing?.phone ?? "");
+  const [email, setEmail] = useState(existing?.email ?? "");
+  const [openToContact, setOpenToContact] = useState(
+    existing?.open_to_contact ?? true,
+  );
+  const [lookingFor, setLookingFor] = useState<string[]>(
+    existing?.looking_for ?? [],
+  );
+  const [agreed, setAgreed] = useState(existing?.agreed_terms ?? false);
+  const [saving, setSaving] = useState(false);
+
+  const editing = Boolean(existing);
+
+  /** Ensure we have a uid (middleware usually has signed us in anonymously). */
+  async function ensureUid(): Promise<string | null> {
+    const { data } = await supabase.auth.getUser();
+    if (data.user) return data.user.id;
+    const { data: anon, error } = await supabase.auth.signInAnonymously();
+    if (error) {
+      toast("Couldn't start a session. Is anonymous sign-in enabled?");
+      return null;
+    }
+    return anon.user?.id ?? null;
+  }
+
+  function toggleLooking(value: string) {
+    setLookingFor((prev) =>
+      prev.includes(value)
+        ? prev.filter((v) => v !== value)
+        : [...prev, value],
+    );
+  }
+
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    if (!configured) {
+      toast("Connect Supabase to upload photos");
+      return;
+    }
+
+    setUploading(true);
+    const uid = await ensureUid();
+    if (!uid) {
+      setUploading(false);
+      return;
+    }
+
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `${uid}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("selfies")
+      .upload(path, file, { upsert: true, contentType: file.type });
+
+    if (error) {
+      toast("Photo upload failed. Try a different image.");
+      setUploading(false);
+      return;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("selfies").getPublicUrl(path);
+    setPhotoUrl(publicUrl);
+    setUploading(false);
+    toast("Looking good");
+    void track(
+      { eventId: event?.id ?? null, actorAttendeeId: existing?.id ?? null },
+      "photo_uploaded",
+    );
+  }
+
+  async function handleSubmit() {
+    if (!configured) {
+      toast("Connect Supabase to save your profile");
+      return;
+    }
+    if (!first.trim() || !last.trim()) {
+      toast("Add your first and last name");
+      return;
+    }
+    if (!agreed) {
+      toast("Please agree to the terms");
+      return;
+    }
+
+    setSaving(true);
+    const uid = await ensureUid();
+    if (!uid) {
+      setSaving(false);
+      return;
+    }
+
+    const { data: saved, error } = await supabase
+      .from("attendees")
+      .upsert(
+        {
+          auth_uid: uid,
+          event_id: event?.id ?? null,
+          first_name: first.trim(),
+          last_name: last.trim(),
+          company: company.trim() || null,
+          industry,
+          phone: phone.trim() || null,
+          email: email.trim() || null,
+          photo_url: photoUrl,
+          open_to_contact: openToContact,
+          looking_for: lookingFor,
+          agreed_terms: true,
+        },
+        { onConflict: "auth_uid,event_id" },
+      )
+      .select()
+      .single();
+
+    if (error || !saved) {
+      toast(error?.message ?? "Couldn't save your profile");
+      setSaving(false);
+      return;
+    }
+
+    identifyAttendee(saved.id, {
+      company: company.trim() || undefined,
+      industry,
+    });
+    await track(
+      { eventId: event?.id ?? null, actorAttendeeId: saved.id },
+      "signup",
+      { industry },
+    );
+
+    toast(editing ? "Profile updated" : "You're in the directory!");
+    router.push("/directory");
+    router.refresh();
+  }
+
+  return (
+    <>
+      <div className="hero">
+        <h1>
+          Connect
+          <br />
+          <span className="fw">Fort Worth</span>
+        </h1>
+        <p className="sub">
+          Build connections. Grow your business. Meet the room.
+        </p>
+        <div className="selfie-wrap">
+          <div className="selfie">
+            {photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={photoUrl} alt="Your selfie" />
+            ) : (
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#cdd9e6"
+                strokeWidth="1.6"
+              >
+                <path d="M12 13.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+                <path d="M4 19a8 8 0 0 1 16 0" />
+              </svg>
+            )}
+          </div>
+          <input
+            ref={cameraInput}
+            type="file"
+            accept="image/*"
+            capture="user"
+            hidden
+            onChange={handlePhoto}
+          />
+          <input
+            ref={uploadInput}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={handlePhoto}
+          />
+          <div className="selfie-btns">
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              disabled={uploading}
+              onClick={() => cameraInput.current?.click()}
+            >
+              📷 {uploading ? "Uploading…" : "Take photo"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              disabled={uploading}
+              onClick={() => uploadInput.current?.click()}
+            >
+              ⬆ Upload
+            </button>
+          </div>
+          <div className="selfie-hint">
+            A friendly face helps people put a name to you.
+          </div>
+        </div>
+      </div>
+
+      <div className="form">
+        <div className="steps">
+          <span className="dot on" />
+          <span className={`dot ${photoUrl ? "on" : ""}`} />
+          <span className={`dot ${agreed ? "on" : ""}`} />
+        </div>
+
+        <div className="field">
+          <label>First name</label>
+          <input
+            value={first}
+            onChange={(e) => setFirst(e.target.value)}
+            placeholder="Jordan"
+          />
+        </div>
+        <div className="field">
+          <label>Last name</label>
+          <input
+            value={last}
+            onChange={(e) => setLast(e.target.value)}
+            placeholder="Avery"
+          />
+        </div>
+        <div className="field">
+          <label>Company</label>
+          <input
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            placeholder="Trailhead Studio"
+          />
+        </div>
+        <div className="field">
+          <label>Industry</label>
+          <select
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+          >
+            {INDUSTRIES.map((i) => (
+              <option key={i} value={i}>
+                {i}
+              </option>
+            ))}
+          </select>
+          <span className="chev">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </span>
+        </div>
+        <div className="field">
+          <label>Cell number</label>
+          <input
+            value={phone}
+            inputMode="tel"
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="(817) 555-0142"
+          />
+        </div>
+        <div className="field">
+          <label>Email</label>
+          <input
+            value={email}
+            inputMode="email"
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+          />
+        </div>
+
+        <div className="row-toggle">
+          <div className="t">
+            Open to being contacted
+            <small>Let attendees text &amp; save your card</small>
+          </div>
+          <button
+            type="button"
+            aria-pressed={openToContact}
+            className={`switch ${openToContact ? "on" : ""}`}
+            onClick={() => setOpenToContact((v) => !v)}
+          />
+        </div>
+
+        <div className="lookfor">
+          <div className="h">What are you looking for?</div>
+          <div className="chips">
+            {LOOKING_FOR.map((value) => (
+              <button
+                type="button"
+                key={value}
+                className={`chip ${lookingFor.includes(value) ? "on" : ""}`}
+                onClick={() => toggleLooking(value)}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="agree">
+          <button
+            type="button"
+            aria-pressed={agreed}
+            className={`cbx ${agreed ? "on" : ""}`}
+            onClick={() => setAgreed((v) => !v)}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+            >
+              <path d="m5 12 5 5L20 7" />
+            </svg>
+          </button>
+          <div>
+            I agree to the <a>Terms</a> &amp; <a>Privacy Policy</a>, and consent
+            to appear in the attendee directory.
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          style={{ marginBottom: 14 }}
+          disabled={saving}
+          onClick={handleSubmit}
+        >
+          {saving
+            ? "Saving…"
+            : editing
+              ? "Update my profile →"
+              : "Join the directory →"}
+        </button>
+      </div>
+    </>
+  );
+}
