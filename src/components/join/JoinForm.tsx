@@ -92,6 +92,61 @@ export function JoinForm({
     );
   }
 
+  // Edit mode: diff every field (the photo included) against the saved profile,
+  // so we only prompt to save - and offer to discard - once something changed.
+  // The baseline mirrors the initial useState seeds so a freshly loaded form
+  // reads as clean.
+  const isComplete = Boolean(profile?.first_name);
+  const baseline = {
+    first: profile?.first_name ?? "",
+    last: profile?.last_name ?? "",
+    company: profile?.company ?? "",
+    jobTitle: profile?.job_title ?? "",
+    industry: profile?.industry ?? INDUSTRIES[0],
+    phone: profile?.phone ? formatUsPhone(profile.phone) : "",
+    email: profile?.email ?? "",
+    offering: profile?.offering ?? "",
+    openToContact: profile?.open_to_contact ?? true,
+    lookingFor: profile?.looking_for ?? [],
+    agreed: profile?.agreed_terms ?? false,
+  };
+  const sameSet = (a: string[], b: string[]) =>
+    a.length === b.length &&
+    [...a].sort().join("") === [...b].sort().join("");
+  const dirty =
+    !creating &&
+    (pendingBlob !== null ||
+      first !== baseline.first ||
+      last !== baseline.last ||
+      company !== baseline.company ||
+      jobTitle !== baseline.jobTitle ||
+      industry !== baseline.industry ||
+      phone !== baseline.phone ||
+      email !== baseline.email ||
+      offering !== baseline.offering ||
+      openToContact !== baseline.openToContact ||
+      agreed !== baseline.agreed ||
+      !sameSet(lookingFor, baseline.lookingFor));
+
+  function discardChanges() {
+    setFirst(baseline.first);
+    setLast(baseline.last);
+    setCompany(baseline.company);
+    setJobTitle(baseline.jobTitle);
+    setIndustry(baseline.industry);
+    setPhone(baseline.phone);
+    setEmail(baseline.email);
+    setOffering(baseline.offering);
+    setOpenToContact(baseline.openToContact);
+    setLookingFor([...baseline.lookingFor]);
+    setAgreed(baseline.agreed);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPendingBlob(null);
+    setCropSrc(null);
+    toast("Changes discarded");
+  }
+
   function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-selecting the same file
@@ -593,39 +648,77 @@ export function JoinForm({
           </div>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-primary btn-block"
-          style={{ marginBottom: creating ? 14 : 10 }}
-          disabled={saving}
-          onClick={handleSubmit}
-        >
-          {saving
-            ? "Saving…"
-            : creating
-              ? "Create my account →"
-              : "Update my profile →"}
-        </button>
-
         {creating ? (
-          <button
-            type="button"
-            className="btn btn-ghost btn-block"
-            style={{ color: "var(--slate)", borderColor: "var(--line)", marginBottom: 14 }}
-            onClick={onSwitchToSignIn}
-          >
-            Already have an account? Sign in
-          </button>
+          <>
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              style={{ marginBottom: 14 }}
+              disabled={saving}
+              onClick={handleSubmit}
+            >
+              {saving ? "Saving…" : "Create my account →"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              style={{ color: "var(--slate)", borderColor: "var(--line)", marginBottom: 14 }}
+              onClick={onSwitchToSignIn}
+            >
+              Already have an account? Sign in
+            </button>
+          </>
         ) : (
-          <button
-            type="button"
-            className="btn btn-ghost btn-block"
-            style={{ color: "var(--slate)", borderColor: "var(--line)", marginBottom: 14 }}
-            disabled={signingOut}
-            onClick={signOut}
-          >
-            Sign out
-          </button>
+          <>
+            {!isComplete ? (
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                style={{ marginBottom: 10 }}
+                disabled={saving}
+                onClick={handleSubmit}
+              >
+                {saving ? "Saving…" : "Save profile →"}
+              </button>
+            ) : dirty ? (
+              <div className="editbar">
+                <div className="editbar-label">You have unsaved changes</div>
+                <div className="editbar-actions">
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ color: "var(--slate)", borderColor: "var(--line)" }}
+                    disabled={saving}
+                    onClick={discardChanges}
+                  >
+                    Discard
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={saving}
+                    onClick={handleSubmit}
+                  >
+                    {saving ? "Saving…" : "Save changes"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="savednote">
+                <Check size={15} strokeWidth={2.5} aria-hidden />
+                All changes saved
+              </div>
+            )}
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              style={{ color: "var(--slate)", borderColor: "var(--line)", marginBottom: 14 }}
+              disabled={signingOut || saving}
+              onClick={signOut}
+            >
+              Sign out
+            </button>
+          </>
         )}
       </div>
 
