@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Camera, Check, ChevronDown, Upload, UserRound } from "lucide-react";
@@ -9,7 +9,7 @@ import { formatUsPhone, isValidUsPhone } from "@/lib/phone";
 import { INDUSTRIES, LOOKING_FOR } from "@/lib/constants";
 import { identifyAttendee, track } from "@/lib/track";
 import { useToast } from "@/components/Toast";
-import type { Attendee, EventRow } from "@/lib/types";
+import type { EventRow, Profile } from "@/lib/types";
 import type { SiteContent } from "@/lib/content";
 
 // Lazy-load the cropper (and react-easy-crop) only when a photo is picked.
@@ -19,56 +19,70 @@ const CropModal = dynamic(
 );
 
 interface JoinFormProps {
+  /** "create" = logged-out account creation; "edit" = signed-in profile editor. */
+  mode: "create" | "edit";
   event: EventRow | null;
-  existing: Attendee | null;
+  /** Persistent profile to seed the form in edit mode (null when creating). */
+  profile: Profile | null;
   copy: SiteContent;
+  /** Create mode only: flip the parent AuthPanel to the sign-in view. */
+  onSwitchToSignIn?: () => void;
 }
 
-export function JoinForm({ event, existing, copy }: JoinFormProps) {
+const MIN_PASSWORD = 8;
+
+export function JoinForm({
+  mode,
+  event,
+  profile,
+  copy,
+  onSwitchToSignIn,
+}: JoinFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const supabase = createClient();
   const configured = Boolean(SUPABASE_URL);
+  const creating = mode === "create";
 
   const cameraInput = useRef<HTMLInputElement>(null);
   const uploadInput = useRef<HTMLInputElement>(null);
 
-  const [photoUrl, setPhotoUrl] = useState<string | null>(
-    existing?.photo_url ?? null,
-  );
-  const [uploading, setUploading] = useState(false);
+  // Existing (already uploaded) photo, plus a deferred crop awaiting submit.
+  const photoUrl = profile?.photo_url ?? null;
+  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
-  const [first, setFirst] = useState(existing?.first_name ?? "");
-  const [last, setLast] = useState(existing?.last_name ?? "");
-  const [company, setCompany] = useState(existing?.company ?? "");
-  const [jobTitle, setJobTitle] = useState(existing?.job_title ?? "");
-  const [industry, setIndustry] = useState(existing?.industry ?? INDUSTRIES[0]);
+
+  const [first, setFirst] = useState(profile?.first_name ?? "");
+  const [last, setLast] = useState(profile?.last_name ?? "");
+  const [company, setCompany] = useState(profile?.company ?? "");
+  const [jobTitle, setJobTitle] = useState(profile?.job_title ?? "");
+  const [industry, setIndustry] = useState(profile?.industry ?? INDUSTRIES[0]);
   const [phone, setPhone] = useState(
-    existing?.phone ? formatUsPhone(existing.phone) : "",
+    profile?.phone ? formatUsPhone(profile.phone) : "",
   );
-  const [email, setEmail] = useState(existing?.email ?? "");
+  const [email, setEmail] = useState(profile?.email ?? "");
+  const [offering, setOffering] = useState(profile?.offering ?? "");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [openToContact, setOpenToContact] = useState(
-    existing?.open_to_contact ?? true,
+    profile?.open_to_contact ?? true,
   );
   const [lookingFor, setLookingFor] = useState<string[]>(
-    existing?.looking_for ?? [],
+    profile?.looking_for ?? [],
   );
-  const [agreed, setAgreed] = useState(existing?.agreed_terms ?? false);
+  const [agreed, setAgreed] = useState(profile?.agreed_terms ?? false);
   const [saving, setSaving] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
-  const editing = Boolean(existing);
+  // Revoke the object URL when it changes or the form unmounts.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
-  /** Ensure we have a uid (middleware usually has signed us in anonymously). */
-  async function ensureUid(): Promise<string | null> {
-    const { data } = await supabase.auth.getUser();
-    if (data.user) return data.user.id;
-    const { data: anon, error } = await supabase.auth.signInAnonymously();
-    if (error) {
-      toast("Couldn't start a session. Is anonymous sign-in enabled?");
-      return null;
-    }
-    return anon.user?.id ?? null;
-  }
+  const shownPhoto = previewUrl ?? photoUrl;
 
   function toggleLooking(value: string) {
     setLookingFor((prev) =>
@@ -86,117 +100,155 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
       toast("Connect Supabase to upload photos");
       return;
     }
-    // Open the crop/zoom step before uploading.
+    // Open the crop/zoom step; the actual upload is deferred to submit so it
+    // happens under the authenticated user (works during account creation too).
     const reader = new FileReader();
     reader.onload = () =>
       setCropSrc(typeof reader.result === "string" ? reader.result : null);
     reader.readAsDataURL(file);
   }
 
-  async function uploadCropped(blob: Blob) {
+  function handleCropped(blob: Blob) {
     setCropSrc(null);
-    if (!configured) return;
+    setPendingBlob(blob);
+    setPreviewUrl(URL.createObjectURL(blob));
+    toast("Looking good");
+  }
 
-    setUploading(true);
-    const uid = await ensureUid();
-    if (!uid) {
-      setUploading(false);
-      return;
-    }
-
+  /** Upload the pending crop (if any) under uid; returns the URL to persist. */
+  async function resolvePhotoUrl(uid: string): Promise<string | null> {
+    if (!pendingBlob) return photoUrl;
     const path = `${uid}/${Date.now()}.jpg`;
     const { error } = await supabase.storage
       .from("selfies")
-      .upload(path, blob, { upsert: true, contentType: "image/jpeg" });
-
+      .upload(path, pendingBlob, { upsert: true, contentType: "image/jpeg" });
     if (error) {
-      toast("Photo upload failed. Try a different image.");
-      setUploading(false);
-      return;
+      toast("Photo upload failed - saving without it for now.");
+      return photoUrl;
     }
-
     const {
       data: { publicUrl },
     } = supabase.storage.from("selfies").getPublicUrl(path);
-    setPhotoUrl(publicUrl);
-    setUploading(false);
-    toast("Looking good");
-    void track(
-      { eventId: event?.id ?? null, actorAttendeeId: existing?.id ?? null },
-      "photo_uploaded",
-    );
+    return publicUrl;
+  }
+
+  function validate(): boolean {
+    if (!configured) {
+      toast("Connect Supabase to save your profile");
+      return false;
+    }
+    if (!first.trim()) return toastFail("Add your first name");
+    if (!last.trim()) return toastFail("Add your last name");
+    if (!company.trim()) return toastFail("Add your company");
+    if (!jobTitle.trim()) return toastFail("Add your job title");
+    if (!industry) return toastFail("Pick your industry");
+    if (!isValidUsPhone(phone)) {
+      return toastFail("Enter a valid 10-digit US cell number");
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return toastFail("Enter a valid email address");
+    }
+    if (creating) {
+      if (password.length < MIN_PASSWORD) {
+        return toastFail(`Use a password of at least ${MIN_PASSWORD} characters`);
+      }
+      if (password !== confirm) return toastFail("Passwords don't match");
+    }
+    if (!agreed) return toastFail("Please agree to the terms");
+    return true;
+  }
+
+  function toastFail(message: string): boolean {
+    toast(message);
+    return false;
+  }
+
+  /** Shared field payload for both profiles (memory) and attendees (snapshot). */
+  function fieldPayload(photo: string | null) {
+    return {
+      first_name: first.trim(),
+      last_name: last.trim(),
+      company: company.trim() || null,
+      job_title: jobTitle.trim() || null,
+      industry,
+      phone: phone.trim() || null,
+      email: email.trim() || null,
+      photo_url: photo,
+      open_to_contact: openToContact,
+      looking_for: lookingFor,
+      offering: offering.trim() || null,
+      agreed_terms: true,
+    };
   }
 
   async function handleSubmit() {
-    if (!configured) {
-      toast("Connect Supabase to save your profile");
-      return;
-    }
-    if (!first.trim()) {
-      toast("Add your first name");
-      return;
-    }
-    if (!last.trim()) {
-      toast("Add your last name");
-      return;
-    }
-    if (!company.trim()) {
-      toast("Add your company");
-      return;
-    }
-    if (!jobTitle.trim()) {
-      toast("Add your job title");
-      return;
-    }
-    if (!industry) {
-      toast("Pick your industry");
-      return;
-    }
-    if (!isValidUsPhone(phone)) {
-      toast("Enter a valid 10-digit US cell number");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      toast("Enter a valid email address");
-      return;
-    }
-    if (!agreed) {
-      toast("Please agree to the terms");
-      return;
+    if (!validate()) return;
+    setSaving(true);
+
+    let uid: string;
+    if (creating) {
+      // Clear any leftover anonymous session before creating the real account.
+      const { data: cur } = await supabase.auth.getUser();
+      if (cur.user?.is_anonymous) await supabase.auth.signOut();
+
+      const { data: signUp, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+      });
+      if (error) {
+        if (/already|registered|exists/i.test(error.message)) {
+          toast("That email already has an account - sign in instead.");
+          onSwitchToSignIn?.();
+        } else {
+          toast(error.message);
+        }
+        setSaving(false);
+        return;
+      }
+      // With "Confirm email" ON, there's no session yet - they must confirm.
+      if (!signUp.session) {
+        toast("Account created. Check your email to confirm, then sign in.");
+        onSwitchToSignIn?.();
+        setSaving(false);
+        return;
+      }
+      uid = signUp.user!.id;
+    } else {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) {
+        toast("Your session expired - please sign in again.");
+        setSaving(false);
+        router.push("/");
+        return;
+      }
+      uid = data.user.id;
     }
 
-    setSaving(true);
-    const uid = await ensureUid();
-    if (!uid) {
+    const photo = await resolvePhotoUrl(uid);
+    const fields = fieldPayload(photo);
+
+    // 1. Persist to the profile (the memory carried across events).
+    const { error: profileErr } = await supabase
+      .from("profiles")
+      .update(fields)
+      .eq("id", uid);
+    if (profileErr) {
+      toast(profileErr.message || "Couldn't save your profile");
       setSaving(false);
       return;
     }
 
-    const { data: saved, error } = await supabase
+    // 2. Snapshot into the current event's check-in row.
+    const { data: saved, error: attErr } = await supabase
       .from("attendees")
       .upsert(
-        {
-          auth_uid: uid,
-          event_id: event?.id ?? null,
-          first_name: first.trim(),
-          last_name: last.trim(),
-          company: company.trim(),
-          job_title: jobTitle.trim(),
-          industry,
-          phone: phone.trim(),
-          email: email.trim(),
-          photo_url: photoUrl,
-          open_to_contact: openToContact,
-          looking_for: lookingFor,
-          agreed_terms: true,
-        },
+        { auth_uid: uid, event_id: event?.id ?? null, ...fields },
         { onConflict: "auth_uid,event_id" },
       )
       .select()
       .single();
-
-    if (error || !saved) {
-      toast(error?.message ?? "Couldn't save your profile");
+    if (attErr || !saved) {
+      toast(attErr?.message ?? "Couldn't save your check-in");
       setSaving(false);
       return;
     }
@@ -205,14 +257,24 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
       company: company.trim() || undefined,
       industry,
     });
-    await track(
-      { eventId: event?.id ?? null, actorAttendeeId: saved.id },
-      "signup",
-      { industry },
-    );
+    if (creating) {
+      await track(
+        { eventId: event?.id ?? null, actorAttendeeId: saved.id },
+        "signup",
+        { industry },
+      );
+    }
 
-    toast(editing ? "Profile updated" : "You're in the directory!");
+    toast(creating ? "You're in the directory!" : "Profile updated");
     router.push("/directory");
+    router.refresh();
+  }
+
+  async function signOut() {
+    setSigningOut(true);
+    await supabase.auth.signOut();
+    toast("Signed out");
+    router.push("/");
     router.refresh();
   }
 
@@ -227,9 +289,9 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
         <p className="sub">{copy.subtitle}</p>
         <div className="selfie-wrap">
           <div className="selfie">
-            {photoUrl ? (
+            {shownPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoUrl} alt="Your selfie" />
+              <img src={shownPhoto} alt="Your selfie" />
             ) : (
               <UserRound size={46} strokeWidth={1.6} color="#cdd9e6" aria-hidden />
             )}
@@ -253,16 +315,14 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
             <button
               type="button"
               className="btn btn-primary btn-block"
-              disabled={uploading}
               onClick={() => cameraInput.current?.click()}
             >
               <Camera size={17} strokeWidth={2} aria-hidden />
-              {uploading ? "Uploading…" : "Take photo"}
+              Take photo
             </button>
             <button
               type="button"
               className="btn btn-ghost btn-block"
-              disabled={uploading}
               onClick={() => uploadInput.current?.click()}
             >
               <Upload size={17} strokeWidth={2} aria-hidden />
@@ -276,7 +336,7 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
       <div className="form">
         <div className="steps">
           <span className="dot on" />
-          <span className={`dot ${photoUrl ? "on" : ""}`} />
+          <span className={`dot ${shownPhoto ? "on" : ""}`} />
           <span className={`dot ${agreed ? "on" : ""}`} />
         </div>
 
@@ -370,6 +430,47 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
           />
         </div>
 
+        <div className="field">
+          <label>Your offering</label>
+          <input
+            id="offering"
+            name="offering"
+            value={offering}
+            maxLength={120}
+            onChange={(e) => setOffering(e.target.value)}
+            placeholder="A few words on why you're here"
+          />
+        </div>
+
+        {creating ? (
+          <>
+            <div className="field">
+              <label>Password</label>
+              <input
+                id="password"
+                name="new-password"
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={`At least ${MIN_PASSWORD} characters`}
+              />
+            </div>
+            <div className="field">
+              <label>Confirm password</label>
+              <input
+                id="confirm"
+                name="confirm-password"
+                type="password"
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="Re-enter your password"
+              />
+            </div>
+          </>
+        ) : null}
+
         <div className="row-toggle">
           <div className="t">
             Open to being contacted
@@ -417,23 +518,44 @@ export function JoinForm({ event, existing, copy }: JoinFormProps) {
         <button
           type="button"
           className="btn btn-primary btn-block"
-          style={{ marginBottom: 14 }}
+          style={{ marginBottom: creating ? 14 : 10 }}
           disabled={saving}
           onClick={handleSubmit}
         >
           {saving
             ? "Saving…"
-            : editing
-              ? "Update my profile →"
-              : "Join the directory →"}
+            : creating
+              ? "Create my account →"
+              : "Update my profile →"}
         </button>
+
+        {creating ? (
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            style={{ color: "var(--slate)", borderColor: "var(--line)", marginBottom: 14 }}
+            onClick={onSwitchToSignIn}
+          >
+            Already have an account? Sign in
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            style={{ color: "var(--slate)", borderColor: "var(--line)", marginBottom: 14 }}
+            disabled={signingOut}
+            onClick={signOut}
+          >
+            Sign out
+          </button>
+        )}
       </div>
 
       {cropSrc ? (
         <CropModal
           image={cropSrc}
           onCancel={() => setCropSrc(null)}
-          onConfirm={uploadCropped}
+          onConfirm={handleCropped}
         />
       ) : null}
     </>

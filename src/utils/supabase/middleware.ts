@@ -3,9 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./client";
 
 /**
- * Refreshes the Supabase auth session on every request and, for logged-out
- * visitors, transparently signs them in anonymously so the directory and
- * other SSR reads work on first paint (zero-friction attendee auth).
+ * Refreshes the Supabase auth session on every request so SSR reads see a
+ * valid token. Logged-out is a supported state now (real accounts) - we no
+ * longer silently sign visitors in anonymously.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -33,21 +33,11 @@ export async function updateSession(request: NextRequest) {
   });
 
   // IMPORTANT: do not run other code between createServerClient and getUser().
-  let user = null;
+  // Calling getUser() refreshes the session cookie on the response.
   try {
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
+    await supabase.auth.getUser();
   } catch {
     return supabaseResponse;
-  }
-
-  if (!user) {
-    try {
-      await supabase.auth.signInAnonymously();
-    } catch {
-      // Anonymous sign-ins may be disabled in the Supabase dashboard.
-      // The Join screen surfaces a clearer message in that case.
-    }
   }
 
   return supabaseResponse;

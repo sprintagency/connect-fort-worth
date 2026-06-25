@@ -28,6 +28,7 @@ export function MemberEditor({ member, onClose, onSaved }: MemberEditorProps) {
     member.phone ? formatUsPhone(member.phone) : "",
   );
   const [email, setEmail] = useState(member.email ?? "");
+  const [offering, setOffering] = useState(member.offering ?? "");
   const [openToContact, setOpenToContact] = useState(member.open_to_contact);
   const [saving, setSaving] = useState(false);
 
@@ -50,6 +51,7 @@ export function MemberEditor({ member, onClose, onSaved }: MemberEditorProps) {
         industry,
         phone: phone.trim() || null,
         email: email.trim() || null,
+        offering: offering.trim() || null,
         open_to_contact: openToContact,
       })
       .eq("id", member.id);
@@ -128,6 +130,14 @@ export function MemberEditor({ member, onClose, onSaved }: MemberEditorProps) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label>Offering</label>
+            <input
+              value={offering}
+              maxLength={120}
+              onChange={(e) => setOffering(e.target.value)}
             />
           </div>
           <div className="row-toggle">

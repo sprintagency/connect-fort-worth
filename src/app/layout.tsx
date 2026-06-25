@@ -4,9 +4,9 @@ import "./globals.css";
 import { createClient } from "@/utils/supabase/server";
 import {
   getCurrentUser,
-  getMyAttendee,
   getRole,
   isAdminRole,
+  isRealUser,
 } from "@/lib/server-data";
 import { getCachedEvent } from "@/lib/cached";
 import { Providers } from "@/components/Providers";
@@ -49,9 +49,6 @@ export default async function RootLayout({
     getRole(supabase),
     getCurrentUser(supabase),
   ]);
-  const mine = user
-    ? await getMyAttendee(supabase, event?.id ?? null, user.id)
-    : null;
 
   const sponsorUrl = process.env.NEXT_PUBLIC_SPONSOR_LOGO_URL || null;
   const sponsorName = process.env.NEXT_PUBLIC_SPONSOR_NAME || null;
@@ -63,7 +60,7 @@ export default async function RootLayout({
           <AppShell
             event={event}
             isAdmin={isAdminRole(role)}
-            hasJoined={Boolean(mine)}
+            isSignedIn={isRealUser(user)}
             sponsorUrl={sponsorUrl}
             sponsorName={sponsorName}
           >

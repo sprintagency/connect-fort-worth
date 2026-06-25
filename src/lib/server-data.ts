@@ -1,5 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { Attendee, EventRow, Role } from "./types";
+import type { Attendee, EventRow, Profile, Role } from "./types";
 
 /** The signed-in user (anonymous or real), or null if Supabase isn't configured. */
 export async function getCurrentUser(
@@ -8,6 +8,32 @@ export async function getCurrentUser(
   try {
     const { data } = await supabase.auth.getUser();
     return data.user;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A "real" account = signed in and NOT anonymous. Any leftover anonymous
+ * cookie from before accounts existed is treated as logged-out.
+ */
+export function isRealUser(user: User | null): boolean {
+  return Boolean(user) && user!.is_anonymous !== true;
+}
+
+/** The current user's persistent profile (the memory carried across events). */
+export async function getMyProfile(
+  supabase: SupabaseClient,
+  uid: string | null,
+): Promise<Profile | null> {
+  if (!uid) return null;
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", uid)
+      .maybeSingle();
+    return (data as Profile) ?? null;
   } catch {
     return null;
   }

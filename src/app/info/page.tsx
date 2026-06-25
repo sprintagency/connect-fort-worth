@@ -1,20 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { getRole, isAdminRole } from "@/lib/server-data";
 import { getCachedContent, getCachedEvent } from "@/lib/cached";
+import { formatEventDate } from "@/lib/format";
 import { AdminAccessCard } from "@/components/info/AdminAccessCard";
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-// Format YYYY-MM-DD without Date() timezone drift.
-function formatEventDate(d: string | null): string {
-  if (!d) return "TBA";
-  const [y, m, day] = d.split("-").map(Number);
-  if (!y || !m || !day) return d;
-  return `${MONTHS[m - 1]} ${day}, ${y}`;
-}
 
 export default async function InfoPage() {
   const supabase = await createClient();
@@ -22,11 +10,11 @@ export default async function InfoPage() {
   const role = await getRole(supabase);
   const content = await getCachedContent();
 
-  let countQuery = supabase
-    .from("attendees")
-    .select("id", { count: "exact", head: true });
-  if (event?.id) countQuery = countQuery.eq("event_id", event.id);
-  const { count } = await countQuery;
+  // SECURITY DEFINER RPC so the count shows even for logged-out visitors
+  // (the attendees table itself is members-only).
+  const { data: count } = await supabase.rpc("directory_count", {
+    p_event_id: event?.id ?? null,
+  });
 
   return (
     <div className="info">

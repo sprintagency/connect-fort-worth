@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import {
   getCurrentUser,
   getMyAttendee,
   getRole,
   isAdminRole,
+  isRealUser,
 } from "@/lib/server-data";
 import { getCachedEvent } from "@/lib/cached";
 import { DirectoryClient } from "@/components/directory/DirectoryClient";
@@ -12,6 +14,10 @@ import type { Attendee } from "@/lib/types";
 export default async function DirectoryPage() {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
+
+  // The directory is for members only - send guests to sign in / create.
+  if (!isRealUser(user)) redirect("/");
+
   const event = await getCachedEvent();
   const role = await getRole(supabase);
   const mine = await getMyAttendee(supabase, event?.id ?? null, user?.id ?? null);

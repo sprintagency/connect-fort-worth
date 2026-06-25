@@ -18,7 +18,7 @@ import { Toaster } from "./Toast";
 interface AppShellProps {
   event: EventRow | null;
   isAdmin: boolean;
-  hasJoined: boolean;
+  isSignedIn: boolean;
   sponsorUrl: string | null;
   sponsorName: string | null;
   children: React.ReactNode;
@@ -40,7 +40,7 @@ const SECONDARY_TABS: TabItem[] = [
 export function AppShell({
   event,
   isAdmin,
-  hasJoined,
+  isSignedIn,
   sponsorUrl,
   sponsorName,
   children,
@@ -50,8 +50,8 @@ export function AppShell({
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
-  // The home tab doubles as the profile editor once a visitor has joined.
-  const homeTab: TabItem = hasJoined
+  // The home tab doubles as the profile editor once a member is signed in.
+  const homeTab: TabItem = isSignedIn
     ? { href: "/", label: "Profile", Icon: UserRound }
     : { href: "/", label: "Join", Icon: UserPlus };
   const tabs: TabItem[] = [homeTab, ...SECONDARY_TABS];

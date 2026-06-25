@@ -9,6 +9,7 @@ import {
   CircleSlash,
   Download,
   Mail,
+  Megaphone,
   MessageCircle,
   Phone,
 } from "lucide-react";
@@ -176,6 +177,12 @@ export function ProfileSheet({
         </div>
 
         <div className="detrows">
+          {a.offering ? (
+            <div className="detrow">
+              <Megaphone size={18} strokeWidth={2} aria-hidden />
+              <span className="v">{a.offering}</span>
+            </div>
+          ) : null}
           {a.phone ? (
             <div className="detrow">
               <Phone size={18} strokeWidth={2} aria-hidden />

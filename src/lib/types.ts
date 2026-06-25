@@ -33,6 +33,30 @@ export interface Attendee {
   photo_url: string | null;
   open_to_contact: boolean;
   looking_for: string[];
+  offering: string | null;
+  agreed_terms: boolean;
+  created_at: string;
+}
+
+/**
+ * Persistent member record (1:1 with auth.users). This is the "memory" that
+ * carries across events. A check-in (Attendee row) is a per-event snapshot of
+ * these fields.
+ */
+export interface Profile {
+  id: string;
+  role: Role;
+  first_name: string | null;
+  last_name: string | null;
+  company: string | null;
+  job_title: string | null;
+  industry: string | null;
+  phone: string | null;
+  email: string | null;
+  photo_url: string | null;
+  open_to_contact: boolean;
+  looking_for: string[];
+  offering: string | null;
   agreed_terms: boolean;
   created_at: string;
 }
