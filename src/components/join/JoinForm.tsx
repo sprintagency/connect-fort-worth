@@ -181,53 +181,140 @@ export function JoinForm({
     };
   }
 
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () =>
+        resolve(typeof reader.result === "string" ? reader.result : "");
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
   async function handleSubmit() {
     if (!validate()) return;
     setSaving(true);
+    if (creating) await handleCreate();
+    else await handleEdit();
+  }
 
-    let uid: string;
-    if (creating) {
-      // Clear any leftover anonymous session before creating the real account.
-      const { data: cur } = await supabase.auth.getUser();
-      if (cur.user?.is_anonymous) await supabase.auth.signOut();
+  /**
+   * New account. signUp runs on the device (so the confirmation email sends
+   * without server-IP rate limits), then a service-role route writes the
+   * profile + check-in instantly. We then try to sign in: it succeeds when
+   * email confirmation is OFF (full instant access), and when it's ON the
+   * attendee is already in the directory and just confirms to browse.
+   */
+  async function handleCreate() {
+    const { data: cur } = await supabase.auth.getUser();
+    if (cur.user?.is_anonymous) await supabase.auth.signOut();
 
-      const { data: signUp, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-      });
-      if (error) {
-        if (/already|registered|exists/i.test(error.message)) {
-          toast("That email already has an account - sign in instead.");
-          onSwitchToSignIn?.();
-        } else {
-          toast(error.message);
-        }
-        setSaving(false);
-        return;
-      }
-      // With "Confirm email" ON, there's no session yet - they must confirm.
-      if (!signUp.session) {
-        toast("Account created. Check your email to confirm, then sign in.");
+    const { data: signUp, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+    });
+    if (error) {
+      if (/already|registered|exists/i.test(error.message)) {
+        toast("That email already has an account - sign in instead.");
         onSwitchToSignIn?.();
-        setSaving(false);
-        return;
+      } else {
+        toast(error.message);
       }
-      uid = signUp.user!.id;
-    } else {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) {
-        toast("Your session expired - please sign in again.");
-        setSaving(false);
-        router.push("/");
-        return;
-      }
-      uid = data.user.id;
+      setSaving(false);
+      return;
+    }
+    const uid = signUp.user?.id;
+    if (!uid) {
+      toast("Couldn't create your account. Try again.");
+      setSaving(false);
+      return;
     }
 
+    const photoBase64 = pendingBlob ? await blobToBase64(pendingBlob) : null;
+
+    let ok = false;
+    let attendeeId: string | undefined;
+    try {
+      const res = await fetch("/api/account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: uid,
+          firstName: first.trim(),
+          lastName: last.trim(),
+          company: company.trim(),
+          jobTitle: jobTitle.trim(),
+          industry,
+          phone: phone.trim(),
+          email: email.trim(),
+          offering: offering.trim(),
+          openToContact,
+          lookingFor,
+          photoBase64,
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        attendeeId?: string;
+      };
+      ok = res.ok && Boolean(json.ok);
+      attendeeId = json.attendeeId;
+    } catch {
+      // Network failure - account exists; fall through to the confirm message.
+    }
+
+    if (!ok) {
+      // The account exists; only the profile write failed. Don't lose them.
+      toast("Account created. Check your email to confirm, then sign in.");
+      onSwitchToSignIn?.();
+      setSaving(false);
+      return;
+    }
+
+    if (attendeeId) {
+      identifyAttendee(attendeeId, {
+        company: company.trim() || undefined,
+        industry,
+      });
+      void track(
+        { eventId: event?.id ?? null, actorAttendeeId: attendeeId },
+        "signup",
+        { industry },
+      );
+    }
+
+    // Establish a browser session if the account is usable immediately.
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    if (signInErr) {
+      toast(
+        "You're in the directory! Check your email to confirm, then sign in to browse.",
+      );
+      onSwitchToSignIn?.();
+      setSaving(false);
+      return;
+    }
+
+    toast("You're in the directory!");
+    router.push("/directory");
+    router.refresh();
+  }
+
+  /** Edit an existing profile (signed in): update profile + current check-in. */
+  async function handleEdit() {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      toast("Your session expired - please sign in again.");
+      setSaving(false);
+      router.push("/");
+      return;
+    }
+    const uid = data.user.id;
     const photo = await resolvePhotoUrl(uid);
     const fields = fieldPayload(photo);
 
-    // 1. Persist to the profile (the memory carried across events).
     const { error: profileErr } = await supabase
       .from("profiles")
       .update(fields)
@@ -238,7 +325,6 @@ export function JoinForm({
       return;
     }
 
-    // 2. Snapshot into the current event's check-in row.
     const { data: saved, error: attErr } = await supabase
       .from("attendees")
       .upsert(
@@ -257,15 +343,7 @@ export function JoinForm({
       company: company.trim() || undefined,
       industry,
     });
-    if (creating) {
-      await track(
-        { eventId: event?.id ?? null, actorAttendeeId: saved.id },
-        "signup",
-        { industry },
-      );
-    }
-
-    toast(creating ? "You're in the directory!" : "Profile updated");
+    toast("Profile updated");
     router.push("/directory");
     router.refresh();
   }
