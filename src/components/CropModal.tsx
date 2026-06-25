@@ -10,9 +10,31 @@ interface CropModalProps {
   image: string;
   onCancel: () => void;
   onConfirm: (blob: Blob) => void | Promise<void>;
+  aspect?: number;
+  cropShape?: "round" | "rect";
+  minZoom?: number;
+  restrictPosition?: boolean;
+  mime?: "image/jpeg" | "image/png";
+  outputWidth?: number;
+  title?: string;
+  hint?: string;
+  confirmLabel?: string;
 }
 
-export function CropModal({ image, onCancel, onConfirm }: CropModalProps) {
+export function CropModal({
+  image,
+  onCancel,
+  onConfirm,
+  aspect = 1,
+  cropShape = "round",
+  minZoom = 1,
+  restrictPosition = true,
+  mime = "image/jpeg",
+  outputWidth = 600,
+  title,
+  hint = "Drag to reposition, pinch or slide to zoom.",
+  confirmLabel = "Use photo",
+}: CropModalProps) {
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -31,11 +53,17 @@ export function CropModal({ image, onCancel, onConfirm }: CropModalProps) {
 
   if (!target) return null;
 
+  const outputHeight = Math.round(outputWidth / aspect);
+
   async function confirm() {
     if (!area) return;
     setBusy(true);
     try {
-      const blob = await getCroppedBlob(image, area);
+      const blob = await getCroppedBlob(image, area, {
+        width: outputWidth,
+        height: outputHeight,
+        mime,
+      });
       await onConfirm(blob);
     } catch {
       setBusy(false);
@@ -45,15 +73,17 @@ export function CropModal({ image, onCancel, onConfirm }: CropModalProps) {
   return createPortal(
     <div className="crop-mask">
       <div className="crop-card">
+        {title ? <div className="crop-title">{title}</div> : null}
         <div className="crop-area">
           <Cropper
             image={image}
             crop={crop}
             zoom={zoom}
-            minZoom={1}
+            minZoom={minZoom}
             maxZoom={3}
-            aspect={1}
-            cropShape="round"
+            aspect={aspect}
+            cropShape={cropShape}
+            restrictPosition={restrictPosition}
             showGrid={false}
             onCropChange={setCrop}
             onZoomChange={setZoom}
@@ -65,7 +95,7 @@ export function CropModal({ image, onCancel, onConfirm }: CropModalProps) {
             <span>Zoom</span>
             <input
               type="range"
-              min={1}
+              min={minZoom}
               max={3}
               step={0.01}
               value={zoom}
@@ -73,7 +103,7 @@ export function CropModal({ image, onCancel, onConfirm }: CropModalProps) {
               aria-label="Zoom"
             />
           </label>
-          <p className="crop-hint">Drag to reposition, pinch or slide to zoom.</p>
+          <p className="crop-hint">{hint}</p>
           <div className="crop-btns">
             <button
               type="button"
@@ -89,7 +119,7 @@ export function CropModal({ image, onCancel, onConfirm }: CropModalProps) {
               disabled={busy}
               onClick={confirm}
             >
-              {busy ? "Saving…" : "Use photo"}
+              {busy ? "Saving…" : confirmLabel}
             </button>
           </div>
         </div>

@@ -840,6 +840,13 @@ body {
   overflow: hidden;
   box-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.6);
 }
+.crop-title {
+  padding: 14px 16px 0;
+  font-family: var(--disp);
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+}
 .crop-area {
   position: relative;
   width: 100%;

@@ -5,6 +5,13 @@ export interface CropArea {
   height: number;
 }
 
+export interface CropOutput {
+  width?: number;
+  height?: number;
+  mime?: "image/jpeg" | "image/png";
+  quality?: number;
+}
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -14,34 +21,37 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Crop `src` to the given pixel area and return a square JPEG blob. */
+/**
+ * Crop `src` to the given pixel area and return a blob.
+ * Defaults to a 600x600 JPEG; pass PNG to preserve transparency (e.g. logos).
+ */
 export async function getCroppedBlob(
   src: string,
   area: CropArea,
-  size = 600,
+  out: CropOutput = {},
 ): Promise<Blob> {
+  const {
+    width = 600,
+    height = 600,
+    mime = "image/jpeg",
+    quality = 0.9,
+  } = out;
+
   const img = await loadImage(src);
   const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
-  ctx.drawImage(
-    img,
-    area.x,
-    area.y,
-    area.width,
-    area.height,
-    0,
-    0,
-    size,
-    size,
-  );
+  // Source rect may extend past the image (when zoomed out); those areas stay
+  // transparent, which PNG preserves.
+  ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, width, height);
+
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Crop failed"))),
-      "image/jpeg",
-      0.9,
+      mime,
+      quality,
     );
   });
 }

@@ -2,10 +2,16 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Upload } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useToast } from "@/components/Toast";
 import type { EventRow } from "@/lib/types";
+
+const CropModal = dynamic(
+  () => import("@/components/CropModal").then((m) => ({ default: m.CropModal })),
+  { ssr: false },
+);
 
 export function SponsorEditor({ event }: { event: EventRow | null }) {
   const router = useRouter();
@@ -20,6 +26,7 @@ export function SponsorEditor({ event }: { event: EventRow | null }) {
   );
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   if (!event) {
     return (
@@ -35,17 +42,24 @@ export function SponsorEditor({ event }: { event: EventRow | null }) {
     );
   }
 
-  async function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    // Open the crop/zoom step before uploading.
+    const reader = new FileReader();
+    reader.onload = () =>
+      setCropSrc(typeof reader.result === "string" ? reader.result : null);
+    reader.readAsDataURL(file);
+  }
 
+  async function uploadLogoBlob(blob: Blob) {
+    setCropSrc(null);
     setUploading(true);
-    const ext = (file.name.split(".").pop() || "png").toLowerCase();
-    const path = `sponsor/${Date.now()}.${ext}`;
+    const path = `sponsor/${Date.now()}.png`;
     const { error } = await supabase.storage
       .from("branding")
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, blob, { upsert: true, contentType: "image/png" });
 
     if (error) {
       toast(error.message || "Upload failed. Did you run the migration?");
@@ -182,6 +196,23 @@ export function SponsorEditor({ event }: { event: EventRow | null }) {
           {saving ? "Saving…" : "Save sponsor"}
         </button>
       </div>
+
+      {cropSrc ? (
+        <CropModal
+          image={cropSrc}
+          aspect={3}
+          cropShape="rect"
+          minZoom={0.5}
+          restrictPosition={false}
+          mime="image/png"
+          outputWidth={600}
+          title="Crop the sponsor logo"
+          hint="Drag and zoom to frame the logo. Transparent areas are kept."
+          confirmLabel="Use logo"
+          onCancel={() => setCropSrc(null)}
+          onConfirm={uploadLogoBlob}
+        />
+      ) : null}
     </div>
   );
 }
