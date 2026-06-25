@@ -49,6 +49,7 @@ function SignInForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   async function signIn() {
     if (!email.trim() || !password) {
@@ -69,6 +70,24 @@ function SignInForm({
     // Home decides what's next (check-in prompt or profile).
     router.push("/");
     router.refresh();
+  }
+
+  async function forgot() {
+    const e = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      toast("Enter your email above first");
+      return;
+    }
+    setResetting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(e, {
+      redirectTo: `${window.location.origin}/auth/reset`,
+    });
+    setResetting(false);
+    if (error) {
+      toast(error.message || "Couldn't send the reset email");
+      return;
+    }
+    toast("Check your email for a reset link");
   }
 
   return (
@@ -115,6 +134,15 @@ function SignInForm({
           onClick={signIn}
         >
           {busy ? "Signing in…" : "Sign in →"}
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-block"
+          style={{ color: "var(--navy)", borderColor: "var(--line)", marginBottom: 10 }}
+          disabled={resetting}
+          onClick={forgot}
+        >
+          {resetting ? "Sending…" : "Forgot password?"}
         </button>
         <button
           type="button"
