@@ -1,3 +1,4 @@
+import { Contact, MessageCircle } from "lucide-react";
 import { avatarGradient, initials } from "@/lib/constants";
 import type { Attendee } from "@/lib/types";
 
@@ -8,32 +9,8 @@ interface AttendeeCardProps {
   onVcard: () => void;
 }
 
-const SmsIcon = (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path d="M21 11.5a8.5 8.5 0 0 1-12 7.7L3 21l1.8-6A8.5 8.5 0 1 1 21 11.5Z" />
-  </svg>
-);
-
-const VcardIcon = (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <circle cx="9" cy="9" r="3" />
-    <path d="M3 19a6 6 0 0 1 12 0M16 8h5M16 12h5M16 16h5" />
-  </svg>
-);
+const SmsIcon = <MessageCircle size={18} strokeWidth={2} aria-hidden />;
+const VcardIcon = <Contact size={18} strokeWidth={2} aria-hidden />;
 
 export function AttendeeCard({
   attendee,

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BarChart3, Info, UserPlus, Users, type LucideIcon } from "lucide-react";
 import type { EventRow } from "@/lib/types";
 import { Header } from "./Header";
 import { BuiltBy } from "./BuiltBy";
@@ -15,40 +16,16 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-const TABS = [
-  {
-    href: "/",
-    label: "Join",
-    icon: <path d="M12 5v14M5 12h14" />,
-  },
-  {
-    href: "/directory",
-    label: "Directory",
-    icon: (
-      <>
-        <circle cx="9" cy="8" r="3.2" />
-        <path d="M3 19a6 6 0 0 1 12 0" />
-        <circle cx="17.5" cy="9" r="2.4" />
-        <path d="M16 19a5 5 0 0 1 5-3.5" />
-      </>
-    ),
-  },
-  {
-    href: "/stats",
-    label: "Stats",
-    adminOnly: true,
-    icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
-  },
-  {
-    href: "/info",
-    label: "Info",
-    icon: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 11v5M12 8h.01" />
-      </>
-    ),
-  },
+const TABS: {
+  href: string;
+  label: string;
+  Icon: LucideIcon;
+  adminOnly?: boolean;
+}[] = [
+  { href: "/", label: "Join", Icon: UserPlus },
+  { href: "/directory", label: "Directory", Icon: Users },
+  { href: "/stats", label: "Stats", adminOnly: true, Icon: BarChart3 },
+  { href: "/info", label: "Info", Icon: Info },
 ];
 
 export function AppShell({
@@ -80,14 +57,7 @@ export function AppShell({
               href={t.href}
               className={`tab ${isActive(t.href) ? "on" : ""}`}
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                {t.icon}
-              </svg>
+              <t.Icon size={22} strokeWidth={2} aria-hidden />
               {t.label}
             </Link>
           ))}

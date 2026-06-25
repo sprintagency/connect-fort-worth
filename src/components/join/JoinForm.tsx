@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Camera, Check, ChevronDown, Upload, UserRound } from "lucide-react";
 import { createClient, SUPABASE_URL } from "@/utils/supabase/client";
 import { INDUSTRIES, LOOKING_FOR } from "@/lib/constants";
 import { identifyAttendee, track } from "@/lib/track";
@@ -184,15 +185,7 @@ export function JoinForm({ event, existing }: JoinFormProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={photoUrl} alt="Your selfie" />
             ) : (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#cdd9e6"
-                strokeWidth="1.6"
-              >
-                <path d="M12 13.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
-                <path d="M4 19a8 8 0 0 1 16 0" />
-              </svg>
+              <UserRound size={46} strokeWidth={1.6} color="#cdd9e6" aria-hidden />
             )}
           </div>
           <input
@@ -217,7 +210,8 @@ export function JoinForm({ event, existing }: JoinFormProps) {
               disabled={uploading}
               onClick={() => cameraInput.current?.click()}
             >
-              📷 {uploading ? "Uploading…" : "Take photo"}
+              <Camera size={17} strokeWidth={2} aria-hidden />
+              {uploading ? "Uploading…" : "Take photo"}
             </button>
             <button
               type="button"
@@ -225,7 +219,8 @@ export function JoinForm({ event, existing }: JoinFormProps) {
               disabled={uploading}
               onClick={() => uploadInput.current?.click()}
             >
-              ⬆ Upload
+              <Upload size={17} strokeWidth={2} aria-hidden />
+              Upload
             </button>
           </div>
           <div className="selfie-hint">
@@ -244,6 +239,9 @@ export function JoinForm({ event, existing }: JoinFormProps) {
         <div className="field">
           <label>First name</label>
           <input
+            id="first"
+            name="firstName"
+            autoComplete="given-name"
             value={first}
             onChange={(e) => setFirst(e.target.value)}
             placeholder="Jordan"
@@ -252,6 +250,9 @@ export function JoinForm({ event, existing }: JoinFormProps) {
         <div className="field">
           <label>Last name</label>
           <input
+            id="last"
+            name="lastName"
+            autoComplete="family-name"
             value={last}
             onChange={(e) => setLast(e.target.value)}
             placeholder="Avery"
@@ -260,6 +261,9 @@ export function JoinForm({ event, existing }: JoinFormProps) {
         <div className="field">
           <label>Company</label>
           <input
+            id="company"
+            name="organization"
+            autoComplete="organization"
             value={company}
             onChange={(e) => setCompany(e.target.value)}
             placeholder="Trailhead Studio"
@@ -268,6 +272,8 @@ export function JoinForm({ event, existing }: JoinFormProps) {
         <div className="field">
           <label>Industry</label>
           <select
+            id="industry"
+            name="industry"
             value={industry}
             onChange={(e) => setIndustry(e.target.value)}
           >
@@ -278,23 +284,18 @@ export function JoinForm({ event, existing }: JoinFormProps) {
             ))}
           </select>
           <span className="chev">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
+            <ChevronDown size={14} strokeWidth={2.2} aria-hidden />
           </span>
         </div>
         <div className="field">
           <label>Cell number</label>
           <input
-            value={phone}
+            id="phone"
+            name="phone"
+            type="tel"
             inputMode="tel"
+            autoComplete="tel"
+            value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="(817) 555-0142"
           />
@@ -302,8 +303,12 @@ export function JoinForm({ event, existing }: JoinFormProps) {
         <div className="field">
           <label>Email</label>
           <input
-            value={email}
+            id="email"
+            name="email"
+            type="email"
             inputMode="email"
+            autoComplete="email"
+            value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@company.com"
           />
@@ -345,14 +350,7 @@ export function JoinForm({ event, existing }: JoinFormProps) {
             className={`cbx ${agreed ? "on" : ""}`}
             onClick={() => setAgreed((v) => !v)}
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-            >
-              <path d="m5 12 5 5L20 7" />
-            </svg>
+            <Check size={13} strokeWidth={3} aria-hidden />
           </button>
           <div>
             I agree to the <a>Terms</a> &amp; <a>Privacy Policy</a>, and consent

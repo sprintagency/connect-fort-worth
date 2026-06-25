@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  Building2,
+  CircleCheck,
+  CircleSlash,
+  Download,
+  Mail,
+  MessageCircle,
+  Phone,
+} from "lucide-react";
 import { avatarGradient, initials } from "@/lib/constants";
 import type { Attendee } from "@/lib/types";
 
@@ -10,21 +19,6 @@ interface ProfileSheetProps {
   onClose: () => void;
   onSms: (a: Attendee) => void;
   onVcard: (a: Attendee) => void;
-}
-
-function DetailIcon({ d }: { d: string }) {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d={d} />
-    </svg>
-  );
 }
 
 export function ProfileSheet({
@@ -103,78 +97,42 @@ export function ProfileSheet({
             className="btn btn-primary btn-block"
             onClick={() => onSms(a)}
           >
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 11.5a8.5 8.5 0 0 1-12 7.7L3 21l1.8-6A8.5 8.5 0 1 1 21 11.5Z" />
-            </svg>{" "}
-            Tap to text
+            <MessageCircle size={17} strokeWidth={2} aria-hidden /> Tap to text
           </button>
           <button
             type="button"
             className="btn btn-ghost btn-block"
             onClick={() => onVcard(a)}
           >
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M12 15V3M12 15l-4-4M12 15l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-            </svg>{" "}
-            Save vCard
+            <Download size={17} strokeWidth={2} aria-hidden /> Save vCard
           </button>
         </div>
 
         <div className="detrows">
           {a.phone ? (
             <div className="detrow">
-              <DetailIcon d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z" />
+              <Phone size={18} strokeWidth={2} aria-hidden />
               <span className="v">{a.phone}</span>
             </div>
           ) : null}
           {a.email ? (
             <div className="detrow">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <rect x="3" y="5" width="18" height="14" rx="2" />
-                <path d="m3 7 9 6 9-6" />
-              </svg>
+              <Mail size={18} strokeWidth={2} aria-hidden />
               <span className="v">{a.email}</span>
             </div>
           ) : null}
           {a.company ? (
             <div className="detrow">
-              <DetailIcon d="M3 21V7l9-4 9 4v14M3 21h18M9 21v-5h6v5" />
+              <Building2 size={18} strokeWidth={2} aria-hidden />
               <span className="v">{a.company}</span>
             </div>
           ) : null}
           <div className="detrow">
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 8v4l3 2" />
-            </svg>
+            {a.open_to_contact ? (
+              <CircleCheck size={18} strokeWidth={2} aria-hidden />
+            ) : (
+              <CircleSlash size={18} strokeWidth={2} aria-hidden />
+            )}
             <span className={`v ${a.open_to_contact ? "lk" : ""}`}>
               {a.open_to_contact
                 ? "Open to be contacted"

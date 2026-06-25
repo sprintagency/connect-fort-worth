@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Search } from "lucide-react";
 import { INDUSTRIES } from "@/lib/constants";
 import { track, type TrackContext } from "@/lib/track";
 import { buildSmsHref } from "@/lib/sms";
@@ -81,17 +82,7 @@ export function DirectoryClient({
     <>
       <div className="search">
         <div className="searchbox">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3-3" />
-          </svg>
+          <Search size={18} strokeWidth={2} aria-hidden />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -115,16 +106,7 @@ export function DirectoryClient({
               ))}
             </select>
             <span className="chev">
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
+              <ChevronDown size={13} strokeWidth={2.4} aria-hidden />
             </span>
           </div>
         </div>

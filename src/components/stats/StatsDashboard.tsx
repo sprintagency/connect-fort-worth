@@ -1,34 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Download, MessageCircle, RefreshCw } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import type { DashboardData } from "@/lib/stats";
 import { Donut } from "./Donut";
 
-const SmsFeedIcon = (
-  <svg
-    width="15"
-    height="15"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path d="M21 11.5a8.5 8.5 0 0 1-12 7.7L3 21l1.8-6A8.5 8.5 0 1 1 21 11.5Z" />
-  </svg>
-);
-const VcardFeedIcon = (
-  <svg
-    width="15"
-    height="15"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path d="M12 15V3M8 11l4 4 4-4M4 19h16" />
-  </svg>
-);
+const SmsFeedIcon = <MessageCircle size={15} strokeWidth={2} aria-hidden />;
+const VcardFeedIcon = <Download size={15} strokeWidth={2} aria-hidden />;
 
 export function StatsDashboard({ initial }: { initial: DashboardData }) {
   const [data, setData] = useState<DashboardData>(initial);
@@ -95,17 +74,7 @@ export function StatsDashboard({ initial }: { initial: DashboardData }) {
           title="Refresh"
           style={{ width: 34, height: 34 }}
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M21 12a9 9 0 1 1-3-6.7L21 3" />
-            <path d="M21 3v5h-5" />
-          </svg>
+          <RefreshCw size={16} strokeWidth={2} aria-hidden />
         </button>
       </div>
       <div className="liverow">
