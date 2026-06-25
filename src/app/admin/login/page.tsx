@@ -22,21 +22,24 @@ export default function AdminLoginPage() {
     }
     setBusy(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
-    if (error) {
-      toast(error.message);
+    if (error || !signInData.user) {
+      toast(error?.message ?? "Sign in failed");
       setBusy(false);
       return;
     }
 
     // Confirm this account is actually an organizer before sending to /stats.
+    // Filter to the user's own row: a superadmin's RLS matches every profile
+    // row, so an unfiltered .single() would fail and look like "not an organizer".
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
-      .single();
+      .eq("id", signInData.user.id)
+      .maybeSingle();
     const isAdmin =
       profile?.role === "admin" || profile?.role === "superadmin";
 

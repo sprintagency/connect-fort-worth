@@ -244,7 +244,7 @@ export function JoinForm({ event, existing }: JoinFormProps) {
             autoComplete="given-name"
             value={first}
             onChange={(e) => setFirst(e.target.value)}
-            placeholder="Jordan"
+            placeholder="First name"
           />
         </div>
         <div className="field">
@@ -255,7 +255,7 @@ export function JoinForm({ event, existing }: JoinFormProps) {
             autoComplete="family-name"
             value={last}
             onChange={(e) => setLast(e.target.value)}
-            placeholder="Avery"
+            placeholder="Last name"
           />
         </div>
         <div className="field">
@@ -266,7 +266,7 @@ export function JoinForm({ event, existing }: JoinFormProps) {
             autoComplete="organization"
             value={company}
             onChange={(e) => setCompany(e.target.value)}
-            placeholder="Trailhead Studio"
+            placeholder="Company"
           />
         </div>
         <div className="field">
@@ -297,7 +297,7 @@ export function JoinForm({ event, existing }: JoinFormProps) {
             autoComplete="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="(817) 555-0142"
+            placeholder="Cell number"
           />
         </div>
         <div className="field">
@@ -310,7 +310,7 @@ export function JoinForm({ event, existing }: JoinFormProps) {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@company.com"
+            placeholder="Email address"
           />
         </div>
 

@@ -16,9 +16,16 @@ export async function getCurrentUser(
 /** Role for the current user. Defaults to 'attendee' when unknown. */
 export async function getRole(supabase: SupabaseClient): Promise<Role> {
   try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return "attendee";
+    // Filter to the user's own row. A superadmin's RLS would otherwise match
+    // every profile row (is_admin() is true), and .maybeSingle() would fail.
     const { data } = await supabase
       .from("profiles")
       .select("role")
+      .eq("id", user.id)
       .maybeSingle();
     return (data?.role as Role) ?? "attendee";
   } catch {
